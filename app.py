@@ -116,7 +116,7 @@ def initial_process_excel(uploaded_file_object):
 # Streamlit アプリのUI部分
 # --------------------------------------------------------------------------
 st.set_page_config(layout="wide")
-st.title('🌍 多言語対応・高速AIレビュー分析ツール (v8.1)')
+st.title('🌍 多言語対応・高速AIレビュー分析ツール')
 
 st.sidebar.header("⚙️ 設定")
 api_key = st.sidebar.text_input("1. OpenAI APIキーを入力", type="password")
