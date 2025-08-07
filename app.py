@@ -116,7 +116,7 @@ def initial_process_excel(uploaded_file_object):
 # Streamlit アプリのUI部分
 # --------------------------------------------------------------------------
 st.set_page_config(layout="wide")
-st.title('🌍 多言語対応・高速AIレビュー分析ツール')
+st.title('多言語対応・高速AIレビュー分析ツール')
 
 st.sidebar.header("⚙️ 設定")
 api_key = st.sidebar.text_input("1. OpenAI APIキーを入力", type="password")
@@ -149,7 +149,18 @@ if uploaded_file:
         POSITIVE_WORDS, NEGATIVE_WORDS, PRODUCT_TOPICS_KEYWORDS = KW['POSITIVE_WORDS'], KW['NEGATIVE_WORDS'], KW['PRODUCT_TOPICS_KEYWORDS']
         
         with st.spinner("ステップ1: ルールベースで高速フィルタリング中..."):
-            def clean_text(text): return re.sub(r'\s+', ' ', re.sub(r'[^\w\s]', '', emoji.demojize(text.lower()))).strip()
+            
+            def clean_text(text):
+                # 1. 小文字に統一
+                text = text.lower()
+                # 2. 絵文字を完全に除去
+                text = emoji.replace_emoji(text, replace='')
+                # 3. 記号をスペースに置換
+                text = re.sub(r'[^\w\s]', ' ', text)
+                # 4. 連続するスペースを一つにまとめ、前後の空白を削除
+                text = re.sub(r'\s+', ' ', text).strip()
+                return text
+
             raw_df['Cleaned_Comment'] = raw_df['Original_Comment'].apply(clean_text)
             
             reviews_to_keep, reviews_to_remove, reviews_for_ai = [], [], []
@@ -212,7 +223,6 @@ if uploaded_file:
             st.write("プラットフォーム別サマリー")
             st.dataframe(st.session_state.summary_platform_df)
 
-        # --- ★★★ ここからが復元されたExcelダウンロード機能 ★★★ ---
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             sheets_to_write = {
@@ -228,19 +238,16 @@ if uploaded_file:
                 df.to_excel(writer, sheet_name=sheet_name, index=is_summary)
                 worksheet = writer.sheets[sheet_name]
 
-                # ヘッダーに書式を適用
                 if is_summary:
                     worksheet.write(0, 0, df.index.name if df.index.name else 'Index', header_format)
                 for col_num, value in enumerate(df.columns):
                     worksheet.write(0, col_num + (1 if is_summary else 0), value, header_format)
                 
-                # 列幅を自動調整
                 all_cols = [df.index.to_series()] + [df[col] for col in df.columns] if is_summary else [df[col] for col in df.columns]
                 all_names = [df.index.name or 'Index'] + df.columns.tolist() if is_summary else df.columns.tolist()
                 for i, (col_data, col_name) in enumerate(zip(all_cols, all_names)):
-                    # データとヘッダーの最大文字数を取得
                     max_len = max(col_data.astype(str).str.len().max(), len(str(col_name)))
-                    worksheet.set_column(i, i, max_len + 2) # 少し余裕を持たせる
+                    worksheet.set_column(i, i, max_len + 2)
         
         st.download_button(
             label="📥 分析レポートをExcelでダウンロード",
